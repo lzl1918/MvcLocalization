@@ -18,7 +18,13 @@ namespace LocalizationCore
             services.AddScoped<ILocalizedViewRenderContextAccessor, LocalizedViewRenderContextAccessor>();
             services.AddScoped<ILocalizedViewRenderContext>(service =>
             {
-                return service.GetService<ILocalizedViewRenderContextAccessor>().Context;
+                ILocalizedViewRenderContextAccessor accessor = service.GetService<ILocalizedViewRenderContextAccessor>();
+                if (accessor.Context == null)
+                {
+                    ICultureContext cultureContext = service.GetService<ICultureContext>();
+                    accessor.Context = new LocalizedViewRenderContext(cultureContext.CurrentCulture, cultureContext.CurrentCulture, cultureContext.UrlCultureSpecifier);
+                }
+                return accessor.Context;
             });
             return services;
         }
