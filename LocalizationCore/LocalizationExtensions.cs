@@ -1,4 +1,5 @@
-﻿using LocalizationCore.Middlewares;
+﻿using LocalizationCore.CodeMatching;
+using LocalizationCore.Middlewares;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -25,6 +26,13 @@ namespace LocalizationCore
         public static IApplicationBuilder UseMvcLocalization(this IApplicationBuilder app)
         {
             return app.UseMiddleware<LocalizationMiddleware>();
+        }
+
+        public static IServiceCollection AddCodeMatching(this IServiceCollection services, string resourceDirectory = "/Strings")
+        {
+            services.AddSingleton<ICodeMatchingOption>(new CodeMatchingOption(resourceDirectory));
+            services.AddScoped<ICodeMatchingService, CodeMatchingService>();
+            return services;
         }
     }
 }

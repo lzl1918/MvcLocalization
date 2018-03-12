@@ -1,0 +1,21 @@
+﻿@page
+@namespace LocalizationTest.Pages
+@using LocalizationCore.CodeMatching
+@inject ICodeMatchingService codesrv
+@model TestCodeModel
+@{
+	Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<title>Page</title>
+</head>
+<body>
+	<h1>Page Content</h1>
+    <h2>@codesrv.Match("code", "code test")</h2>
+</body>
+</html>

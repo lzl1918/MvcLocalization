@@ -16,6 +16,7 @@ namespace LocalizationTest
         {
             services.AddSession();
             services.AddMvcLocalization("zh", new string[] { "zh-CN", "ja-JP", "en" });
+            services.AddCodeMatching();
             services.AddMvc();
         }
 
