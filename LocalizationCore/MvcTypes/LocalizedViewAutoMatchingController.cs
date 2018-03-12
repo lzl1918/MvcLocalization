@@ -87,7 +87,7 @@ namespace LocalizationCore
             if (ResourceRequestHelper.TryFindFile(basePath, viewName, "cshtml", viewFindResult.RequestedCulture, httpContext, out string matchedName, out ICultureExpression matchedCulture))
             {
                 httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, matchedCulture, cultureContext.UrlCultureSpecifier);
-                viewResult.ViewName = matchedName.Substring(0, matchedName.Length - ".cshtml".Length);
+                viewResult.ViewName = Path.GetFileNameWithoutExtension(matchedName);
                 return base.FindView(actionContext, viewResult);
             }
             else

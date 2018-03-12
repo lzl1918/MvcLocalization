@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.RazorPages.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
@@ -36,8 +37,7 @@ namespace LocalizationCore
             string fileName = Path.GetFileName(basePath);
             string pageName = Path.GetFileNameWithoutExtension(basePath);
             basePath = basePath.Substring(0, basePath.Length - fileName.Length);
-            char last;
-            while ((last = basePath[basePath.Length - 1]) == '/' || last == '\\')
+            while (basePath[basePath.Length - 1] == '/')
                 basePath = basePath.Substring(0, basePath.Length - 1);
 
             HttpContext httpContext = pageContext.HttpContext;
@@ -46,16 +46,19 @@ namespace LocalizationCore
             if (ResourceRequestHelper.TryFindFile(basePath, pageName, "cshtml", _requestedCulture, httpContext, out string matchedName, out ICultureExpression matchedCulture))
             {
                 httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, matchedCulture, cultureContext.UrlCultureSpecifier);
-                if (!matchedName.Substring(0, matchedName.Length - ".cshtml".Length).Equals(pageName))
+                string matchedPageName = Path.GetFileNameWithoutExtension(matchedName);
+                string relativePath = $"{basePath}/{matchedName}";
+                if (!relativePath.Equals(this.Page.Path))
                 {
-                    string relativePath = Path.Combine(basePath, matchedName);
                     RazorPageResult pageResult = engine.GetPage(executingFilePath, relativePath);
                     Page page = (Page)pageResult.Page;
-                    page.ViewContext = this.Page.ViewContext;
-                    page.ViewContext.ExecutingFilePath = Path.Combine(executingFilePath, relativePath);
-                    page.PageContext = this.Page.PageContext;
-                    page.PageContext.ActionDescriptor.PageTypeInfo = page.GetType().GetTypeInfo();
-                    page.PageContext.ActionDescriptor.RelativePath = relativePath;
+                    PageContext resultPageContext = pageContext.CreateCopy();
+                    ViewContext resultViewContext = this.Page.ViewContext.CreateCopy();
+                    page.ViewContext = resultViewContext;
+                    resultViewContext.ExecutingFilePath = relativePath;
+                    resultPageContext.ActionDescriptor.PageTypeInfo = page.GetType().GetTypeInfo();
+                    resultPageContext.ActionDescriptor.RelativePath = relativePath;
+                    page.PageContext = resultPageContext;
                     page.HtmlEncoder = this.Page.HtmlEncoder;
                     page.Path = relativePath;
                     this.Page = page;

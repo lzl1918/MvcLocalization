@@ -10,8 +10,8 @@
   "profiles": {
     "IIS Express": {
       "commandName": "IISExpress",
-      "launchBrowser": false,
-      "launchUrl": "MyPage/MyPage",
+      "launchBrowser": true,
+      "launchUrl": "en/MyPage",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

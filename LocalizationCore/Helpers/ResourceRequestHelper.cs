@@ -24,15 +24,17 @@ namespace LocalizationCore.Helpers
             string filePath;
             string fileName;
             string culture;
-
+            IFileInfo file;
             if (requestedCulture.IsAllRegion)
             {
                 // find by name
                 // View.en.cshtml
+
                 culture = requestedCulture.Language;
                 fileName = $"{name}.{culture}.{extension}";
                 filePath = Path.Combine(parentPath, fileName);
-                if (env.ContentRootFileProvider.GetFileInfo(filePath).Exists)
+                file = env.ContentRootFileProvider.GetFileInfo(filePath);
+                if (file.Exists && !file.IsDirectory)
                 {
                     matchedCulture = requestedCulture;
                     matchedName = fileName;
@@ -40,38 +42,105 @@ namespace LocalizationCore.Helpers
                 }
 
                 // find the first region having the same language
+                // View.en-XX.cshtml
                 IDirectoryContents directoryContents = env.ContentRootFileProvider.GetDirectoryContents(parentPath);
                 string startsWithFilter = $"{name}.{culture}";
-                IFileInfo file = directoryContents.FirstOrDefault(x => x.Name.StartsWith(startsWithFilter) && x.Name.EndsWith(extension));
+                file = directoryContents.FirstOrDefault(x => !x.IsDirectory && x.Name.StartsWith(startsWithFilter) && x.Name.EndsWith(extension));
                 if (file != null)
                 {
                     string cultureName = file.Name.Substring(name.Length + 1);
-                    cultureName = cultureName.Substring(0, cultureName.Length - extension.Length - 1);
+                    cultureName = Path.GetFileNameWithoutExtension(cultureName);
                     matchedCulture = cultureName.ParseCultureExpression();
                     matchedName = file.Name;
                     return true;
                 }
+
+                // try find directory named with language
+                // en/View.cshtml
+                IFileInfo dir = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, culture));
+                if (dir.Exists && dir.IsDirectory)
+                {
+                    file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, dir.Name, $"{name}.{extension}"));
+                    if (file.Exists && file.IsDirectory)
+                    {
+                        string cultureName = culture;
+                        matchedCulture = cultureName.ParseCultureExpression();
+                        matchedName = $"{dir.Name}/{file.Name}";
+                        return true;
+                    }
+                }
+
+                // try find directory named with the first region having the same language
+                // en-XX/View.cshtml
+                dir = directoryContents.FirstOrDefault(x => x.IsDirectory && x.Name.StartsWith(culture));
+                if (dir != null)
+                {
+                    file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, dir.Name, $"{name}.{extension}"));
+                    if (file.Exists && !file.IsDirectory)
+                    {
+                        string cultureName = dir.Name;
+                        matchedCulture = cultureName.ParseCultureExpression();
+                        matchedName = $"{dir.Name}/{file.Name}";
+                        return true;
+                    }
+                }
             }
             else
             {
+                // find by name
+                // View.en-US.cshtml
                 culture = requestedCulture.DisplayName;
                 fileName = $"{name}.{culture}.{extension}";
                 filePath = Path.Combine(parentPath, fileName);
-                if (env.ContentRootFileProvider.GetFileInfo(filePath).Exists)
+                file = env.ContentRootFileProvider.GetFileInfo(filePath);
+                if (file.Exists && !file.IsDirectory)
                 {
                     matchedCulture = requestedCulture;
                     matchedName = fileName;
                     return true;
                 }
 
+                // find by language
+                // View.en.cshtml
                 culture = requestedCulture.Language;
                 fileName = $"{name}.{culture}.{extension}";
                 filePath = Path.Combine(parentPath, fileName);
-                if (env.ContentRootFileProvider.GetFileInfo(filePath).Exists)
+                file = env.ContentRootFileProvider.GetFileInfo(filePath);
+                if (file.Exists && !file.IsDirectory)
                 {
                     matchedCulture = requestedCulture.RemoveRegion();
                     matchedName = fileName;
                     return true;
+                }
+
+                // try find directory named with name
+                // en-US/View.cshtml
+                IFileInfo dir = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, requestedCulture.DisplayName));
+                if (dir.Exists && dir.IsDirectory)
+                {
+                    file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, dir.Name, $"{name}.{extension}"));
+                    if (file.Exists && !file.IsDirectory)
+                    {
+                        string cultureName = culture;
+                        matchedCulture = cultureName.ParseCultureExpression();
+                        matchedName = $"{dir.Name}/{file.Name}";
+                        return true;
+                    }
+                }
+
+                // try find directory named with the specific language
+                // en/View.cshtml
+                dir = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, requestedCulture.Language));
+                if (dir.Exists && dir.IsDirectory)
+                {
+                    file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, dir.Name, $"{name}.{extension}"));
+                    if (file.Exists && !file.IsDirectory)
+                    {
+                        string cultureName = dir.Name;
+                        matchedCulture = cultureName.ParseCultureExpression();
+                        matchedName = $"{dir.Name}/{file.Name}";
+                        return true;
+                    }
                 }
             }
 
