@@ -11,10 +11,12 @@ namespace LocalizationCore.Middlewares
     internal sealed class LocalizationMiddleware
     {
         private readonly RequestDelegate next;
+        private readonly bool checkCultureSupported;
 
-        public LocalizationMiddleware(RequestDelegate next)
+        public LocalizationMiddleware(RequestDelegate next, bool checkCultureSupported)
         {
             this.next = next;
+            this.checkCultureSupported = checkCultureSupported;
         }
 
         public Task Invoke(HttpContext context, ICultureContext cultureContext)
@@ -56,8 +58,15 @@ namespace LocalizationCore.Middlewares
             ICultureExpression expression;
             foreach (string lang in languageCodes)
             {
-                if (lang.TryParseCultureExpression(out expression) && cultureOption.IsCultureSupported(expression))
+                if (lang.TryParseCultureExpression(out expression))
+                {
+                    if (checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(expression))
+                    {
+                        return null;
+                    }
                     return expression;
+                }
+
             }
             return null;
         }
@@ -92,8 +101,10 @@ namespace LocalizationCore.Middlewares
                     context.Request.PathBase = new PathString("/");
                 }
 
-                if (!cultureContext.CultureOption.IsCultureSupported(cultureExpression))
+                if (checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(cultureExpression))
+                {
                     return null;
+                }
 
                 return cultureExpression;
             }
@@ -125,8 +136,10 @@ namespace LocalizationCore.Middlewares
                     context.Request.Path = new PathString("/");
                 }
 
-                if (!cultureContext.CultureOption.IsCultureSupported(cultureExpression))
+                if (checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(cultureExpression))
+                {
                     return null;
+                }
 
                 return cultureExpression;
             }

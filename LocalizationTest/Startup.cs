@@ -28,7 +28,7 @@ namespace LocalizationTest
             }
 
             app.UseSession();
-            app.UseMvcLocalization();
+            app.UseMvcLocalization(true);
             app.UseMvc();
             //app.UseMvc(routes =>
             //{

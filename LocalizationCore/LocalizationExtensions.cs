@@ -23,9 +23,9 @@ namespace LocalizationCore
             return services;
         }
 
-        public static IApplicationBuilder UseMvcLocalization(this IApplicationBuilder app)
+        public static IApplicationBuilder UseMvcLocalization(this IApplicationBuilder app, bool checkCultureSupported)
         {
-            return app.UseMiddleware<LocalizationMiddleware>();
+            return app.UseMiddleware<LocalizationMiddleware>(checkCultureSupported);
         }
 
         public static IServiceCollection AddCodeMatching(this IServiceCollection services, string resourceDirectory = "/Strings")
