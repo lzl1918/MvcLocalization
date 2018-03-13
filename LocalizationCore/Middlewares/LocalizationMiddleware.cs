@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using LocalizationCore.Helpers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
@@ -31,15 +33,68 @@ namespace LocalizationCore.Middlewares
             cultureContext.Action = action;
             cultureContext.CurrentCulture = cultureExpression;
             if (urlSpecifier.Length <= 0)
+            {
                 return next(context);
+            }
             else
             {
                 return next(context).ContinueWith(tsk =>
                 {
-                    if (context.Response.StatusCode == 301 || context.Response.StatusCode == 302)
+                    if ((context.Response.StatusCode == 301 || context.Response.StatusCode == 302)
+                    && context.Response.Headers.TryGetValue("Location", out StringValues locationValue)
+                    && locationValue.Count > 0)
                     {
-                        if (context.Response.Headers.ContainsKey("Location"))
-                            context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                        string location = locationValue[0];
+                        if (UrlComponents.TryParse(location, out UrlComponents urlComponents))
+                        {
+                            if (urlComponents.IsRelative)
+                            {
+                                if (!string.IsNullOrEmpty(urlComponents.CultureSpecifier))
+                                {
+                                    // dose not change the location
+                                    // context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                                    return;
+                                }
+                                else
+                                {
+                                    urlComponents.TrySetCulture(urlSpecifier);
+                                    context.Response.Headers["Location"] = urlComponents.FullActionWithQuery;
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                string host = context.Request.Host.Value;
+                                string requestedHost = urlComponents.FullHost;
+                                if (requestedHost != null && requestedHost.Equals(host, StringComparison.CurrentCultureIgnoreCase))
+                                {
+                                    if (!string.IsNullOrEmpty(urlComponents.CultureSpecifier))
+                                    {
+                                        // dose not change the location
+                                        // context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        urlComponents.TrySetCulture(urlSpecifier);
+                                        context.Response.Headers["Location"] = urlComponents.FullActionWithQuery;
+                                        return;
+                                    }
+                                }
+                                else
+                                {
+                                    // dose not change the location
+                                    // context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                                    return;
+                                }
+                            }
+
+                        }
+                        else
+                        {
+                            // dose not change the location
+                            // context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                        }
                     }
                 });
             }
@@ -73,76 +128,26 @@ namespace LocalizationCore.Middlewares
         private ICultureExpression ExtractLanguageFromUrl(HttpContext context, ICultureContext cultureContext, out string urlSpecifier, out string action)
         {
             ICultureOption cultureOption = cultureContext.CultureOption;
-            string path = context.Request.PathBase.Value;
-            if (path.Length > 0)
+            string path = context.Request.Path.Value;
+            if (UrlComponents.TryParse(path, out UrlComponents urlComponents))
             {
-                int slashIndex = 1;
-                int pathLength = path.Length;
-                for (; slashIndex < pathLength; slashIndex++)
-                    if (path[slashIndex] == '/') break;
-                string lang = path.Substring(1, slashIndex - 1).ToLower();
-                if (!lang.TryParseCultureExpression(out ICultureExpression cultureExpression))
-                {
-                    urlSpecifier = "";
-                    action = path;
+                action = urlComponents.Action;
+                context.Request.Path = new PathString(action);
+                urlSpecifier = urlComponents.CultureSpecifier ?? "";
+                if (urlSpecifier.Length > 0)
+                    context.Request.PathBase = context.Request.PathBase.Add(new PathString(urlSpecifier));
+
+                if (urlComponents.Culture != null && checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(urlComponents.Culture))
                     return null;
-                }
-
-                urlSpecifier = path.Substring(0, slashIndex);
-
-                if (slashIndex < pathLength)
-                {
-                    action = path.Substring(slashIndex);
-                    context.Request.PathBase = new PathString(action);
-                }
-                else
-                {
-                    action = "/";
-                    context.Request.PathBase = new PathString("/");
-                }
-
-                if (checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(cultureExpression))
-                {
-                    return null;
-                }
-
-                return cultureExpression;
+                return urlComponents.Culture;
             }
             else
             {
-                path = context.Request.Path;
-                int slashIndex = 1;
-                int pathLength = path.Length;
-                for (; slashIndex < pathLength; slashIndex++)
-                    if (path[slashIndex] == '/') break;
-                string lang = path.Substring(1, slashIndex - 1).ToLower();
-                if (!lang.TryParseCultureExpression(out ICultureExpression cultureExpression))
-                {
-                    urlSpecifier = "";
-                    action = path;
-                    return null;
-                }
-
-                urlSpecifier = path.Substring(0, slashIndex);
-
-                if (slashIndex < pathLength)
-                {
-                    action = path.Substring(slashIndex);
-                    context.Request.Path = new PathString(action);
-                }
-                else
-                {
-                    action = "/";
-                    context.Request.Path = new PathString("/");
-                }
-
-                if (checkCultureSupported && !cultureContext.CultureOption.IsCultureSupported(cultureExpression))
-                {
-                    return null;
-                }
-
-                return cultureExpression;
+                urlSpecifier = "";
+                action = path;
+                return null;
             }
         }
+
     }
 }
