@@ -34,9 +34,9 @@ namespace LocalizationCore
             return app.UseMiddleware<LocalizationMiddleware>(checkCultureSupported);
         }
 
-        public static IServiceCollection AddCodeMatching(this IServiceCollection services, string resourceDirectory = "/Strings")
+        public static IServiceCollection AddCodeMatching(this IServiceCollection services, string resourceDirectory = "/Strings", bool isCaseSensitive = false)
         {
-            services.AddSingleton<ICodeMatchingOption>(new CodeMatchingOption(resourceDirectory));
+            services.AddSingleton<ICodeMatchingOption>(new CodeMatchingOption(resourceDirectory, isCaseSensitive));
             services.AddScoped<ICodeMatchingService, CodeMatchingService>();
             return services;
         }

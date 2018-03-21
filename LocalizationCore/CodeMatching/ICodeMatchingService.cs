@@ -68,7 +68,7 @@ namespace LocalizationCore.CodeMatching
                 {
                     using (Stream fileStream = current.CreateReadStream())
                     {
-                        SetRecord fileContent = (SetRecord)Hake.Extension.ValueRecord.Json.Converter.ReadJson(fileStream);
+                        SetRecord fileContent = (SetRecord)Hake.Extension.ValueRecord.Json.Converter.ReadJson(fileStream, !matchingOption.IsCaseSensitive);
                         CombineSetRecord(values, fileContent);
                     }
                 }
@@ -77,10 +77,10 @@ namespace LocalizationCore.CodeMatching
 
                 }
             }
-            string result = values.ReadAs<string>($"{code}.name");
-            if (result == null)
-                result = defaultName;
-            return result;
+            if (values.TryReadAs<string>($"{code}.name", out string value) &&
+                    value != null)
+                return value;
+            return defaultName;
         }
 
         private static void CombineSetRecord(SetRecord destination, SetRecord source)
