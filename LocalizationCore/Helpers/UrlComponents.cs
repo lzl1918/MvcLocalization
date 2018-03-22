@@ -172,7 +172,13 @@ namespace LocalizationCore.Helpers
         private static bool TryReadHostPort(string hostPort, out string host, out string port)
         {
             int index = hostPort.LastIndexOf(':');
-            if (index == hostPort.Length - 1) // url: host:
+            if (index < 0) // url: host
+            {
+                host = hostPort;
+                port = null;
+                return true;
+            }
+            else if (index == hostPort.Length - 1) // url: host:
             {
                 host = hostPort.Substring(0, index);
                 port = null;
@@ -184,17 +190,11 @@ namespace LocalizationCore.Helpers
                 port = hostPort.Substring(index + 1);
                 return true;
             }
-            else if (index == 0) // url: :port
+            else // url: :port
             {
                 host = null;
                 port = null;
                 return false;
-            }
-            else // url: host
-            {
-                host = hostPort;
-                port = null;
-                return true;
             }
         }
 
@@ -204,7 +204,30 @@ namespace LocalizationCore.Helpers
             remain = remain.Substring(1);
             int index = remain.IndexOf('/');
             string culture = null;
-            if (index == remain.Length - 1) // remain: lang/
+            if (index < 0) // action?query
+            {
+                index = remain.IndexOf('?');
+                if (index >= 0)
+                {
+                    cultureSpecifier = null;
+                    return TryReadActionAndQuery(remain, out action, out queryString);
+                }
+                else if (remain.TryParseCultureExpression(out var _))
+                {
+                    cultureSpecifier = $"/{remain}";
+                    action = "/";
+                    queryString = null;
+                    return true;
+                }
+                else
+                {
+                    action = $"/{remain}";
+                    queryString = null;
+                    cultureSpecifier = null;
+                    return true;
+                }
+            }
+            else if (index == remain.Length - 1) // remain: lang/
             {
                 culture = remain.Substring(0, index);
                 if (culture.TryParseCultureExpression(out var _))
@@ -239,16 +262,12 @@ namespace LocalizationCore.Helpers
                 }
 
             }
-            else if (index == 0) // remain: /en-US/action
+            else // index == 0, remain: /en-US/action
             {
                 cultureSpecifier = null;
                 return TryReadActionAndQuery(remain, out action, out queryString);
             }
-            else // remain: action?query
-            {
-                cultureSpecifier = null;
-                return TryReadActionAndQuery(remain, out action, out queryString);
-            }
+
         }
 
         // read url: action?query
