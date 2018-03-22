@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,9 @@ namespace LocalizationCore.Middlewares
             cultureContext.Action = action;
             cultureContext.CurrentCulture = cultureExpression;
             if (urlSpecifier.Length <= 0)
+            {
                 return next(context);
+            }
             else
             {
                 return next(context).ContinueWith(tsk =>
@@ -39,7 +42,11 @@ namespace LocalizationCore.Middlewares
                     if (context.Response.StatusCode == 301 || context.Response.StatusCode == 302)
                     {
                         if (context.Response.Headers.ContainsKey("Location"))
-                            context.Response.Headers["Location"] = urlSpecifier + context.Response.Headers["Location"];
+                        {
+                            string location = context.Response.Headers["Location"][0];
+                            if (location.StartsWith('/'))
+                                context.Response.Headers["Location"] = urlSpecifier + location;
+                        }
                     }
                 });
             }
