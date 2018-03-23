@@ -10,28 +10,61 @@ using System.Threading.Tasks;
 
 namespace LocalizationCore.Middlewares
 {
+
     internal sealed class LocalizationMiddleware
     {
         private readonly RequestDelegate next;
         private readonly bool checkCultureSupported;
+        private readonly Func<PathString, UrlFilterResult> filter;
 
-        public LocalizationMiddleware(RequestDelegate next, bool checkCultureSupported)
+        public LocalizationMiddleware(RequestDelegate next, bool checkCultureSupported, Func<PathString, UrlFilterResult> filter = null)
         {
             this.next = next;
             this.checkCultureSupported = checkCultureSupported;
+            this.filter = filter;
         }
 
         public Task Invoke(HttpContext context, ICultureContext cultureContext)
         {
-            string urlSpecifier;
-            ICultureExpression cultureExpression = ExtractLanguageFromUrl(context, cultureContext, out urlSpecifier, out string action);
-            cultureContext.UrlCultureSpecifier = urlSpecifier;
-            if (cultureExpression == null)
-                cultureExpression = ExtractLanguageFromHeader(context, cultureContext);
-            if (cultureExpression == null)
-                cultureExpression = cultureContext.CultureOption.DefaultCulture;
-            cultureContext.Action = action;
-            cultureContext.CurrentCulture = cultureExpression;
+            if (filter == null)
+            {
+                InvokeMiddleware(context, cultureContext);
+            }
+            else
+            {
+                UrlFilterResult filterResult = filter(context.Request.Path);
+                if (filterResult is InvokeMiddlewareFilterResult)
+                {
+                    InvokeMiddleware(context, cultureContext);
+                }
+                else if (filterResult is SetCultureFilterResult setCultureResult)
+                {
+                    cultureContext.UrlCultureSpecifier = setCultureResult.CultureSpecifier;
+                    cultureContext.CurrentCulture = setCultureResult.Culture;
+                    cultureContext.Action = setCultureResult.Action;
+                    context.Request.Path = new PathString(cultureContext.Action);
+                    context.Request.PathBase = new PathString(setCultureResult.PathBase);
+                }
+                else if (filterResult is CheckHeaderFilterResult)
+                {
+                    cultureContext.UrlCultureSpecifier = "";
+                    ICultureExpression cultureExpression = ExtractLanguageFromHeader(context, cultureContext);
+                    if (cultureExpression == null)
+                        cultureExpression = cultureContext.CultureOption.DefaultCulture;
+                    cultureContext.Action = context.Request.Path;
+                    cultureContext.CurrentCulture = cultureExpression;
+                }
+                else
+                {
+                    ICultureExpression cultureExpression = cultureContext.CultureOption.DefaultCulture;
+                    cultureContext.Action = context.Request.Path;
+                    cultureContext.CurrentCulture = cultureExpression;
+                    return next(context);
+                }
+            }
+
+            string urlSpecifier = cultureContext.UrlCultureSpecifier;
+
             if (urlSpecifier.Length <= 0)
             {
                 return next(context);
@@ -98,8 +131,19 @@ namespace LocalizationCore.Middlewares
                     }
                 });
             }
-
         }
+        private void InvokeMiddleware(HttpContext context, ICultureContext cultureContext)
+        {
+            ICultureExpression cultureExpression = ExtractLanguageFromUrl(context, cultureContext, out string urlSpecifier, out string action);
+            cultureContext.UrlCultureSpecifier = urlSpecifier;
+            if (cultureExpression == null)
+                cultureExpression = ExtractLanguageFromHeader(context, cultureContext);
+            if (cultureExpression == null)
+                cultureExpression = cultureContext.CultureOption.DefaultCulture;
+            cultureContext.Action = action;
+            cultureContext.CurrentCulture = cultureExpression;
+        }
+
 
         private ICultureExpression ExtractLanguageFromHeader(HttpContext context, ICultureContext cultureContext)
         {

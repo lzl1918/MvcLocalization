@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace LocalizationCore.Helpers
+namespace LocalizationCore
 {
-    internal sealed class UrlComponents
+    public sealed class UrlComponents
     {
         private static Regex PROTOCOL_MATCHER { get; } = new Regex(@"^(?'protocol'\w+)://");
 
@@ -44,6 +44,12 @@ namespace LocalizationCore.Helpers
             }
             urlComponents = null;
             return false;
+        }
+        public static UrlComponents Parse(string url)
+        {
+            if (TryParse(url, out UrlComponents result))
+                return result;
+            throw new InvalidOperationException($"cannot read {url} as a valid url");
         }
 
         public bool TrySetCulture(string culture)
