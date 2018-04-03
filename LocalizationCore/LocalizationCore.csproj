@@ -5,12 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hake.Extension.ValueRecord" Version="1.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.6" />
+    <Compile Remove="Services\Internal\**" />
+    <EmbeddedResource Remove="Services\Internal\**" />
+    <None Remove="Services\Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Services\Internal\" />
+    <PackageReference Include="Hake.Extension.ValueRecord" Version="1.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.6" />
   </ItemGroup>
 
 </Project>
