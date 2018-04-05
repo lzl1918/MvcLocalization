@@ -5,6 +5,11 @@ using System.Text;
 
 namespace LocalizationCore
 {
+    internal interface IFileResourceCache
+    {
+
+    }
+
     public interface ICultureContext
     {
         ICultureOption CultureOption { get; }

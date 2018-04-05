@@ -2,7 +2,7 @@
 
 namespace LocalizationCore
 {
-    public interface ICultureExpression
+    public interface ICultureExpression : IEquatable<ICultureExpression>, IComparable<ICultureExpression>
     {
         string DisplayName { get; }
         string Language { get; }
@@ -40,6 +40,32 @@ namespace LocalizationCore
         }
 
         public override string ToString() => DisplayName;
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+            if (obj is ICultureExpression other)
+                return this.Equals(other);
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return displayName.GetHashCode();
+        }
+
+        public bool Equals(ICultureExpression other)
+        {
+            if (other == null)
+                return false;
+            return DisplayName.Equals(other.DisplayName);
+        }
+
+        public int CompareTo(ICultureExpression other)
+        {
+            if (other == null)
+                return -1;
+            return DisplayName.CompareTo(other.DisplayName);
+        }
     }
 
     public static class CultureExpressionExtensions

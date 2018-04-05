@@ -29,13 +29,13 @@ namespace LocalizationTest
 
             app.UseSession();
             app.UseMvcLocalization(true);
-            app.UseMvc();
-            //app.UseMvc(routes =>
-            //{
-            //    routes.MapRoute(
-            //        name: "default",
-            //        template: "{controller=Test}/{action=Index}");
-            //});
+            //app.UseMvc();
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(
+                    name: "default",
+                    template: "{controller=Test}/{action=Index}");
+            });
 
 
         }

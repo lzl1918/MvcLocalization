@@ -16,13 +16,13 @@ namespace LocalizationCore.CodeMatching
         HttpContext HttpContext { get; }
         void Match<T>(ICultureExpression requestedCulture, ICultureExpression defaultCulture, IEnumerable<T> codedItems) where T : ICodedItem;
         void Match<T>(ICultureExpression requestedCulture, ICultureExpression defaultCulture, T codedItem) where T : ICodedItem;
-        string Match(ICultureExpression requestedCulture, ICultureExpression defuaultCulture, string code, string defaultName);
+        string Match(ICultureExpression requestedCulture, ICultureExpression defaultCulture, string code, string defaultName);
     }
 
     internal sealed class CodeMatchingService : ICodeMatchingService
     {
         private readonly IHttpContextAccessor httpContextAccessor;
-        //private readonly ICodeMatchingCache matchingCache;
+        private readonly ICodeMatchingCache matchingCache;
         private readonly ICodeMatchingOption matchingOption;
         private readonly IHostingEnvironment env;
 
@@ -30,12 +30,12 @@ namespace LocalizationCore.CodeMatching
 
         public CodeMatchingService(
             IHttpContextAccessor httpContextAccessor,
-            //ICodeMatchingCache matchingCache,
+            ICodeMatchingCache matchingCache,
             ICodeMatchingOption matchingOption,
             IHostingEnvironment env)
         {
             this.httpContextAccessor = httpContextAccessor;
-            //this.matchingCache = matchingCache;
+            this.matchingCache = matchingCache;
             this.matchingOption = matchingOption;
             this.env = env;
         }
@@ -53,66 +53,9 @@ namespace LocalizationCore.CodeMatching
             codedItem.DisplayName = Match(requestedCulture, defaultCulture, codedItem.Code, codedItem.DefaultName);
         }
 
-        public string Match(ICultureExpression requestedCulture, ICultureExpression defuaultCulture, string code, string defaultName)
+        public string Match(ICultureExpression requestedCulture, ICultureExpression defaultCulture, string code, string defaultName)
         {
-            string basePath = matchingOption.ResourceDirectory;
-            IList<IFileCultureInfo> files = ResourceRequestHelper.FindFiles(basePath, "json", requestedCulture, HttpContext);
-            string filePath;
-            IFileProvider provider = env.ContentRootFileProvider;
-            SetRecord values = new SetRecord();
-            foreach (IFileCultureInfo file in files.Reverse())
-            {
-                filePath = file.RelativePath;
-                IFileInfo current = provider.GetFileInfo(filePath);
-                try
-                {
-                    using (Stream fileStream = current.CreateReadStream())
-                    {
-                        SetRecord fileContent = (SetRecord)Hake.Extension.ValueRecord.Json.Converter.ReadJson(fileStream, !matchingOption.IsCaseSensitive);
-                        CombineSetRecord(values, fileContent);
-                    }
-                }
-                catch
-                {
-
-                }
-            }
-            if (values.TryReadAs<string>($"{code}.name", out string value) &&
-                    value != null)
-                return value;
-            return defaultName;
-        }
-
-        private static void CombineSetRecord(SetRecord destination, SetRecord source)
-        {
-            string key;
-            RecordBase value;
-            RecordBase destValue;
-            foreach (var pair in source)
-            {
-                key = pair.Key;
-                value = pair.Value;
-                if (destination.TryGetValue(key, out destValue))
-                {
-                    if (value is SetRecord sourceSet && destValue is SetRecord destSet)
-                    {
-                        CombineSetRecord(destSet, sourceSet);
-                    }
-                    else if (value is ListRecord sourceList && destValue is ListRecord destList)
-                    {
-                        foreach (RecordBase sourceListElement in sourceList)
-                            destList.Add(sourceListElement);
-                    }
-                    else
-                    {
-                        destination[key] = value;
-                    }
-                }
-                else
-                {
-                    destination[key] = value;
-                }
-            }
+            return matchingCache.Get(HttpContext, code, defaultName, requestedCulture);
         }
     }
 

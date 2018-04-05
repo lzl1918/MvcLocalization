@@ -18,6 +18,7 @@ using System.IO;
 using LocalizationCore.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using LocalizationCore.Services;
 
 namespace LocalizationCore
 {
@@ -77,17 +78,21 @@ namespace LocalizationCore
             if (!actionContext.ActionDescriptor.RouteValues.TryGetValue(ControllerNameKey, out controllerName) ||
                 string.IsNullOrEmpty(controllerName))
                 controllerName = "";
-            string basePath = Path.Combine("Views", controllerName);
+            string directory = Path.Combine("Views", controllerName);
 
             HttpContext httpContext = actionContext.HttpContext;
-            ICultureOption cultureOption = httpContext.RequestServices.GetService<ICultureOption>();
-            ICultureContext cultureContext = httpContext.RequestServices.GetService<ICultureContext>();
+            IServiceProvider provider = httpContext.RequestServices;
+            ICultureOption cultureOption = provider.GetRequiredService<ICultureOption>();
+            ICultureContext cultureContext = provider.GetRequiredService<ICultureContext>();
             CultureMatchingViewResult viewFindResult = (CultureMatchingViewResult)viewResult;
-
-            if (ResourceRequestHelper.TryFindFile(basePath, viewName, "cshtml", viewFindResult.RequestedCulture, httpContext, out string matchedName, out ICultureExpression matchedCulture))
+            ICultureFileCache fileCache = provider.GetRequiredService<ICultureFileCache>();
+            IFileCultureInfo fileCultureInfo = fileCache.Get(viewFindResult.RequestedCulture, directory, viewName, "cshtml");
+            if (fileCultureInfo != null)
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, matchedCulture, cultureContext.UrlCultureSpecifier);
-                viewResult.ViewName = Path.GetFileNameWithoutExtension(matchedName);
+                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
+                string relativePath = fileCultureInfo.RelativePath.Substring(0, fileCultureInfo.RelativePath.Length - 7); // 7 == ".cshtml".Length
+                relativePath = relativePath.Substring(directory.Length + 1);
+                viewResult.ViewName = relativePath;
                 return base.FindView(actionContext, viewResult);
             }
             else

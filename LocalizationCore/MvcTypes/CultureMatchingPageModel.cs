@@ -1,4 +1,5 @@
 ﻿using LocalizationCore.Helpers;
+using LocalizationCore.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,10 @@ namespace LocalizationCore
 {
     internal sealed class CultureMatchingPageResult : PageResult
     {
-        private readonly IHostingEnvironment _env;
         private readonly ICultureExpression _requestedCulture;
 
-        public CultureMatchingPageResult(IHostingEnvironment env, ICultureExpression requestedCulture)
+        public CultureMatchingPageResult(ICultureExpression requestedCulture)
         {
-            _env = env;
             _requestedCulture = requestedCulture;
         }
         public override async Task ExecuteResultAsync(ActionContext context)
@@ -32,22 +31,22 @@ namespace LocalizationCore
             }
 
 
-            string executingFilePath = _env.ContentRootPath;
+            string executingFilePath = ".";
             string basePath = this.Page.Path;
             string fileName = Path.GetFileName(basePath);
             string pageName = Path.GetFileNameWithoutExtension(basePath);
-            basePath = basePath.Substring(0, basePath.Length - fileName.Length);
-            while (basePath[basePath.Length - 1] == '/')
-                basePath = basePath.Substring(0, basePath.Length - 1);
+            string directory = basePath.Substring(0, basePath.Length - fileName.Length);
+            while (directory[directory.Length - 1] == '/')
+                directory = directory.Substring(0, directory.Length - 1);
 
             HttpContext httpContext = pageContext.HttpContext;
             IRazorViewEngine engine = httpContext.RequestServices.GetRequiredService<IRazorViewEngine>();
             ICultureContext cultureContext = httpContext.RequestServices.GetService<ICultureContext>();
-            if (ResourceRequestHelper.TryFindFile(basePath, pageName, "cshtml", _requestedCulture, httpContext, out string matchedName, out ICultureExpression matchedCulture))
+            IFileCultureInfo fileCultureInfo = httpContext.RequestServices.GetRequiredService<ICultureFileCache>().Get(_requestedCulture, directory, pageName, "cshtml");
+            if (fileCultureInfo != null)
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, matchedCulture, cultureContext.UrlCultureSpecifier);
-                string matchedPageName = Path.GetFileNameWithoutExtension(matchedName);
-                string relativePath = $"{basePath}/{matchedName}";
+                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
+                string relativePath = fileCultureInfo.RelativePath; // 7 == ".cshtml".Length
                 if (!relativePath.Equals(this.Page.Path))
                 {
                     RazorPageResult pageResult = engine.GetPage(executingFilePath, relativePath);
@@ -63,6 +62,7 @@ namespace LocalizationCore
                     page.Path = relativePath;
                     this.Page = page;
                 }
+
             }
             else
             {
@@ -78,9 +78,8 @@ namespace LocalizationCore
 
         public override PageResult Page()
         {
-            var env = HttpContext.RequestServices.GetService<IHostingEnvironment>();
             var cultureContext = HttpContext.RequestServices.GetService<ICultureContext>();
-            return new CultureMatchingPageResult(env, cultureContext.CurrentCulture);
+            return new CultureMatchingPageResult(cultureContext.CurrentCulture);
         }
     }
 }

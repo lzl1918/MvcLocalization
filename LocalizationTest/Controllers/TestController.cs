@@ -5,16 +5,16 @@ using System.Threading.Tasks;
 
 namespace LocalizationTest.Controllers
 {
-    //public class TestController : LocalizedViewAutoMatchingController
-    //{
-    //    public IActionResult Index()
-    //    {
-    //        return View();
-    //    }
+    public class TestController : CultureMatchingController
+    {
+        public IActionResult Index()
+        {
+            return View();
+        }
 
-    //    public string TE()
-    //    {
-    //        return "STRING CONTENT";
-    //    }
-    //}
+        public string TE()
+        {
+            return "STRING CONTENT";
+        }
+    }
 }

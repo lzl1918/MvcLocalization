@@ -14,16 +14,15 @@ namespace LocalizationCore.Helpers
     public static class ResourceRequestHelper
     {
         private static bool TryFindFile(
-            string parentPath,
-            string name,
+            string directory,
+            string fileName,
             string extension,
             IHostingEnvironment env,
             ICultureExpression requestedCulture,
-            out string matchedName,
-            out ICultureExpression matchedCulture)
+            out IFileCultureInfo result)
         {
             string filePath;
-            string fileName;
+            string targetName;
             string culture;
             IFileInfo file;
             IDirectoryContents contents;
@@ -33,42 +32,42 @@ namespace LocalizationCore.Helpers
                 // find by name
                 // View.en.cshtml
                 culture = requestedCulture.Language;
-                fileName = $"{name}.{culture}.{extension}";
-                filePath = $"{parentPath}/{fileName}";
+                targetName = $"{fileName}.{culture}.{extension}";
+                filePath = $"{directory}/{targetName}";
                 file = provider.GetFileInfo(filePath);
                 if (file.Exists && !file.IsDirectory)
                 {
-                    matchedCulture = requestedCulture;
-                    matchedName = fileName;
+                    result = new FileCultureInfo(filePath, targetName, fileName, extension, requestedCulture);
                     return true;
                 }
 
                 // try find directory named with language
                 // en/View.cshtml
-                contents = provider.GetDirectoryContents(parentPath);
+                contents = provider.GetDirectoryContents(directory);
                 IFileInfo dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.Equals(culture));
                 if (dir != null)
                 {
-                    file = provider.GetFileInfo($"{parentPath}/{dir.Name}/{name}.{extension}");
-                    if (file.Exists && file.IsDirectory)
+                    targetName = $"{fileName}.{extension}";
+                    filePath = $"{directory}/{dir.Name}/{targetName}";
+                    file = provider.GetFileInfo(filePath);
+                    if (file.Exists && !file.IsDirectory)
                     {
-                        string cultureName = culture;
-                        matchedCulture = cultureName.ParseCultureExpression();
-                        matchedName = $"{dir.Name}/{file.Name}";
+                        result = new FileCultureInfo(filePath, targetName, fileName, extension, requestedCulture);
                         return true;
                     }
                 }
 
                 // find the first region having the same language
                 // View.en-XX.cshtml
-                string startsWithFilter = $"{name}.{culture}-";
-                file = contents.FirstOrDefault(x => !x.IsDirectory && x.Name.StartsWith(startsWithFilter) && x.Name.EndsWith(extension));
+                string startsWithFilter = $"{fileName}.{culture}-";
+                string endsWithFilter = $".{extension}";
+                file = contents.FirstOrDefault(x => !x.IsDirectory && x.Name.StartsWith(startsWithFilter) && x.Name.EndsWith(endsWithFilter));
                 if (file != null)
                 {
-                    string cultureName = file.Name.Substring(name.Length + 1);
-                    cultureName = Path.GetFileNameWithoutExtension(cultureName);
-                    matchedCulture = cultureName.ParseCultureExpression();
-                    matchedName = file.Name;
+                    culture = file.Name.Substring(fileName.Length + 1);
+                    culture = Path.GetFileNameWithoutExtension(culture);
+                    filePath = $"{directory}/{file.Name}";
+                    result = new FileCultureInfo(filePath, file.Name, fileName, extension, culture.ParseCultureExpression());
                     return true;
                 }
 
@@ -78,12 +77,13 @@ namespace LocalizationCore.Helpers
                 dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.StartsWith(startsWithFilter));
                 if (dir != null)
                 {
-                    file = provider.GetFileInfo($"{parentPath}/{dir.Name}/{name}.{extension}");
+                    targetName = $"{fileName}.{extension}";
+                    filePath = $"{directory}/{dir.Name}/{targetName}";
+                    file = provider.GetFileInfo(filePath);
                     if (file.Exists && !file.IsDirectory)
                     {
-                        string cultureName = dir.Name;
-                        matchedCulture = cultureName.ParseCultureExpression();
-                        matchedName = $"{dir.Name}/{file.Name}";
+                        culture = dir.Name;
+                        result = new FileCultureInfo(filePath, targetName, fileName, extension, culture.ParseCultureExpression());
                         return true;
                     }
                 }
@@ -93,28 +93,27 @@ namespace LocalizationCore.Helpers
                 // find by name
                 // View.en-US.cshtml
                 culture = requestedCulture.DisplayName;
-                fileName = $"{name}.{culture}.{extension}";
-                filePath = $"{parentPath}/{fileName}";
+                targetName = $"{fileName}.{culture}.{extension}";
+                filePath = $"{directory}/{targetName}";
                 file = provider.GetFileInfo(filePath);
                 if (file.Exists && !file.IsDirectory)
                 {
-                    matchedCulture = requestedCulture;
-                    matchedName = fileName;
+                    result = new FileCultureInfo(filePath, targetName, fileName, extension, requestedCulture);
                     return true;
                 }
 
                 // try find directory named with name
                 // en-US/View.cshtml
-                contents = provider.GetDirectoryContents(parentPath);
+                contents = provider.GetDirectoryContents(directory);
                 IFileInfo dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.Equals(culture));
                 if (dir != null)
                 {
-                    file = provider.GetFileInfo($"{parentPath}/{dir.Name}/{name}.{extension}");
+                    targetName = $"{fileName}.{extension}";
+                    filePath = $"{directory}/{culture}/{targetName}";
+                    file = provider.GetFileInfo(filePath);
                     if (file.Exists && !file.IsDirectory)
                     {
-                        string cultureName = culture;
-                        matchedCulture = cultureName.ParseCultureExpression();
-                        matchedName = $"{dir.Name}/{file.Name}";
+                        result = new FileCultureInfo(filePath, targetName, fileName, extension, requestedCulture);
                         return true;
                     }
                 }
@@ -122,13 +121,12 @@ namespace LocalizationCore.Helpers
                 // find by language
                 // View.en.cshtml
                 culture = requestedCulture.Language;
-                fileName = $"{name}.{culture}.{extension}";
-                filePath = $"{parentPath}/{fileName}";
+                targetName = $"{fileName}.{culture}.{extension}";
+                filePath = $"{directory}/{targetName}";
                 file = provider.GetFileInfo(filePath);
                 if (file.Exists && !file.IsDirectory)
                 {
-                    matchedCulture = requestedCulture.RemoveRegion();
-                    matchedName = fileName;
+                    result = new FileCultureInfo(filePath, targetName, fileName, extension, culture.ParseCultureExpression());
                     return true;
                 }
 
@@ -137,79 +135,87 @@ namespace LocalizationCore.Helpers
                 dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.Equals(culture));
                 if (dir != null)
                 {
-                    file = provider.GetFileInfo($"{parentPath}/{culture}/{name}.{extension}");
+                    targetName = $"{fileName}.{extension}";
+                    filePath = $"{directory}/{culture}/{targetName}";
+                    file = provider.GetFileInfo(filePath);
                     if (file.Exists && !file.IsDirectory)
                     {
-                        string cultureName = dir.Name;
-                        matchedCulture = cultureName.ParseCultureExpression();
-                        matchedName = $"{culture}/{file.Name}";
+                        result = new FileCultureInfo(filePath, targetName, fileName, extension, culture.ParseCultureExpression());
                         return true;
                     }
                 }
             }
 
-            matchedCulture = null;
-            matchedName = null;
+            result = null;
             return false;
         }
 
         public static bool TryFindFile(
-            string parentPath,
-            string name,
+            string directory,
+            string fileName,
             string extension,
             ICultureExpression requestedCulture,
-            HttpContext httpContext,
-            out string matchedName,
-            out ICultureExpression matchedCulture)
+            IHostingEnvironment env,
+            ICultureOption cultureOption,
+            out IFileCultureInfo result)
         {
-            IHostingEnvironment env = httpContext.RequestServices.GetService<IHostingEnvironment>();
-            ICultureOption option = httpContext.RequestServices.GetService<ICultureOption>();
-
             // match requested
-            if (TryFindFile(parentPath, name, extension, env, requestedCulture, out matchedName, out matchedCulture))
+            if (TryFindFile(directory, fileName, extension, env, requestedCulture, out result))
                 return true;
 
             // match default
-            if (TryFindFile(parentPath, name, extension, env, option.DefaultCulture, out matchedName, out matchedCulture))
+            if (TryFindFile(directory, fileName, extension, env, cultureOption.DefaultCulture, out result))
                 return true;
 
             // match no language
-            string fileName = $"{name}.{extension}";
-            IFileInfo file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(parentPath, fileName));
+            string targetName = $"{fileName}.{extension}";
+            IFileInfo file = env.ContentRootFileProvider.GetFileInfo(Path.Combine(directory, targetName));
             if (file.Exists && !file.IsDirectory)
             {
-                matchedCulture = null;
-                matchedName = fileName;
+                result = new FileCultureInfo($"{directory}/{targetName}", targetName, fileName, extension, null);
                 return true;
             }
 
             // match failed
-            matchedCulture = null;
-            matchedName = null;
+            result = null;
             return false;
         }
 
-        public static IList<IFileCultureInfo> FindFiles(
-            string parentPath,
+        public static bool TryFindFile(
+            string directory,
+            string fileName,
             string extension,
             ICultureExpression requestedCulture,
-            HttpContext httpContext)
+            HttpContext httpContext,
+            out IFileCultureInfo result)
         {
             IHostingEnvironment env = httpContext.RequestServices.GetService<IHostingEnvironment>();
+            ICultureOption option = httpContext.RequestServices.GetService<ICultureOption>();
+
+            return TryFindFile(directory, fileName, extension, requestedCulture, env, option, out result);
+        }
+
+        public static IList<IFileCultureInfo> FindFiles(
+            string directory,
+            string extension,
+            ICultureExpression requestedCulture,
+            IHostingEnvironment env)
+        {
             string filePath;
-            string fileName;
-            string modelName;
+            string targetName;
+            string fileNameWithoutCulture;
             string nameNoExt;
             string culture;
             string filter;
-            string relatedParent;
-            int sub;
+            string relativeParent;
+            int subLength;
             int lastIndex;
+            string endsWithFilter = $".{extension}";
             IEnumerable<IFileInfo> files;
             IEnumerable<IFileInfo> dirs;
 
             IFileProvider provider = env.ContentRootFileProvider;
-            IDirectoryContents contents = provider.GetDirectoryContents(parentPath);
+            IDirectoryContents contents = provider.GetDirectoryContents(directory);
             List<IFileCultureInfo> result = new List<IFileCultureInfo>();
             SortedSet<string> models = new SortedSet<string>();
             if (requestedCulture.IsAllRegion)
@@ -219,14 +225,14 @@ namespace LocalizationCore.Helpers
                 culture = requestedCulture.Language;
                 filter = $".{culture}.{extension}";
                 files = contents.Where(x => !x.IsDirectory && x.Name.EndsWith(filter));
-                sub = filter.Length;
+                subLength = filter.Length;
                 foreach (IFileInfo file in files)
                 {
-                    fileName = file.Name;
-                    filePath = $"{parentPath}/{fileName}"; // Path.Combine(parentPath, fileName)
-                    modelName = fileName.Substring(0, fileName.Length - sub);
-                    result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                    models.Add(modelName);
+                    targetName = file.Name;
+                    filePath = $"{directory}/{targetName}"; // Path.Combine(parentPath, fileName)
+                    fileNameWithoutCulture = targetName.Substring(0, targetName.Length - subLength);
+                    result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, requestedCulture));
+                    models.Add(fileNameWithoutCulture);
                 }
 
                 // try find directory named with language
@@ -234,63 +240,64 @@ namespace LocalizationCore.Helpers
                 IFileInfo dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.Equals(culture));
                 if (dir != null)
                 {
-                    relatedParent = $"{parentPath}/{culture}";
-                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relatedParent);
-                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(extension));
+                    relativeParent = $"{directory}/{culture}";
+                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relativeParent);
+                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(endsWithFilter));
                     foreach (IFileInfo file in files)
                     {
-                        fileName = file.Name;
-                        filePath = $"{relatedParent}/{fileName}";// Path.Combine(relatedParent, fileName)
-                        modelName = Path.GetFileNameWithoutExtension(fileName);
-                        if (!models.Contains(modelName))
+                        targetName = file.Name;
+                        filePath = $"{relativeParent}/{targetName}";// Path.Combine(relatedParent, fileName)
+                        fileNameWithoutCulture = Path.GetFileNameWithoutExtension(targetName);
+                        if (!models.Contains(fileNameWithoutCulture))
                         {
-                            result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                            models.Add(modelName);
+                            result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, requestedCulture));
+                            models.Add(fileNameWithoutCulture);
                         }
                     }
                 }
 
                 // find the regions having the same language
                 // **.en-**.ext
-                filter = $@"\.{culture}-\w\w\.{extension}$";
+                filter = $@"\.{culture}-[a-zA-Z]{{2}}\.{extension}$";
                 Regex reg = new Regex(filter);
                 files = contents.Where(x => !x.IsDirectory && reg.IsMatch(x.Name));
                 foreach (IFileInfo file in files)
                 {
-                    fileName = file.Name;
-                    nameNoExt = Path.GetFileNameWithoutExtension(fileName);
+                    targetName = file.Name;
+                    nameNoExt = Path.GetFileNameWithoutExtension(targetName);
                     lastIndex = nameNoExt.LastIndexOf('.');
-                    modelName = fileName.Substring(0, lastIndex);
-                    filePath = $"{parentPath}/{fileName}"; //Path.Combine(parentPath, fileName)
+                    fileNameWithoutCulture = targetName.Substring(0, lastIndex);
+                    filePath = $"{directory}/{targetName}"; //Path.Combine(parentPath, fileName)
                     culture = nameNoExt.Substring(lastIndex + 1);
-                    if (!models.Contains(modelName))
+                    if (!models.Contains(fileNameWithoutCulture))
                     {
-                        result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                        models.Add(modelName);
+                        result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, culture.ParseCultureExpression()));
+                        models.Add(fileNameWithoutCulture);
                     }
                 }
 
                 // try find directory named with regions having the same language
                 // en-**/**.ext
-                filter = $@"^{culture}-\w\w$";
+                filter = $"^{culture}-[a-zA-Z]{{2}}$";
                 reg = new Regex(filter);
                 dirs = contents.Where(x => x.IsDirectory && reg.IsMatch(x.Name));
                 foreach (IFileInfo langDir in dirs)
                 {
                     culture = langDir.Name;
-                    relatedParent = $"{parentPath}/{culture}"; //Path.Combine(parentPath, culture)
+                    ICultureExpression cultureExp = culture.ParseCultureExpression();
+                    relativeParent = $"{directory}/{culture}"; //Path.Combine(parentPath, culture)
 
-                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relatedParent);
-                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(extension));
+                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relativeParent);
+                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(endsWithFilter));
                     foreach (IFileInfo file in files)
                     {
-                        fileName = file.Name;
-                        filePath = $"{relatedParent}/{fileName}"; //Path.Combine(relatedParent, fileName)
-                        modelName = Path.GetFileNameWithoutExtension(fileName);
-                        if (!models.Contains(modelName))
+                        targetName = file.Name;
+                        filePath = $"{relativeParent}/{targetName}"; //Path.Combine(relatedParent, fileName)
+                        fileNameWithoutCulture = Path.GetFileNameWithoutExtension(targetName);
+                        if (!models.Contains(fileNameWithoutCulture))
                         {
-                            result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                            models.Add(modelName);
+                            result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, cultureExp));
+                            models.Add(fileNameWithoutCulture);
                         }
                     }
                 }
@@ -302,14 +309,14 @@ namespace LocalizationCore.Helpers
                 culture = requestedCulture.DisplayName;
                 filter = $".{culture}.{extension}";
                 files = contents.Where(x => !x.IsDirectory && x.Name.EndsWith(filter));
-                sub = filter.Length;
+                subLength = filter.Length;
                 foreach (IFileInfo file in files)
                 {
-                    fileName = file.Name;
-                    filePath = $"{parentPath}/{fileName}"; //Path.Combine(parentPath, fileName)
-                    modelName = fileName.Substring(0, fileName.Length - sub);
-                    result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                    models.Add(modelName);
+                    targetName = file.Name;
+                    filePath = $"{directory}/{targetName}"; //Path.Combine(parentPath, fileName)
+                    fileNameWithoutCulture = targetName.Substring(0, targetName.Length - subLength);
+                    result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, requestedCulture));
+                    models.Add(fileNameWithoutCulture);
                 }
 
                 // try find directory named with culture name
@@ -317,19 +324,19 @@ namespace LocalizationCore.Helpers
                 dirs = contents.Where(x => x.IsDirectory && x.Name.Equals(culture));
                 foreach (IFileInfo langDir in dirs)
                 {
-                    relatedParent = $"{parentPath}/{culture}"; //Path.Combine(parentPath, culture)
+                    relativeParent = $"{directory}/{culture}"; //Path.Combine(parentPath, culture)
 
-                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relatedParent);
-                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(extension));
+                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relativeParent);
+                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(endsWithFilter));
                     foreach (IFileInfo file in files)
                     {
-                        fileName = file.Name;
-                        filePath = $"{relatedParent}/{fileName}"; //Path.Combine(relatedParent, fileName)
-                        modelName = Path.GetFileNameWithoutExtension(fileName);
-                        if (!models.Contains(modelName))
+                        targetName = file.Name;
+                        filePath = $"{relativeParent}/{targetName}"; //Path.Combine(relatedParent, fileName)
+                        fileNameWithoutCulture = Path.GetFileNameWithoutExtension(targetName);
+                        if (!models.Contains(fileNameWithoutCulture))
                         {
-                            result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                            models.Add(modelName);
+                            result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, requestedCulture));
+                            models.Add(fileNameWithoutCulture);
                         }
                     }
                 }
@@ -337,43 +344,54 @@ namespace LocalizationCore.Helpers
                 // find the regions having the same language
                 // **.en.ext
                 culture = requestedCulture.Language;
+                ICultureExpression cultureExp = culture.ParseCultureExpression();
                 filter = $".{culture}.{extension}";
                 files = contents.Where(x => !x.IsDirectory && x.Name.EndsWith(filter));
-                sub = filter.Length;
+                subLength = filter.Length;
                 foreach (IFileInfo file in files)
                 {
-                    fileName = file.Name;
-                    filePath = $"{parentPath}/{fileName}"; //Path.Combine(parentPath, fileName)
-                    modelName = fileName.Substring(0, fileName.Length - sub);
-                    if (!models.Contains(modelName))
+                    targetName = file.Name;
+                    filePath = $"{directory}/{targetName}"; //Path.Combine(parentPath, fileName)
+                    fileNameWithoutCulture = targetName.Substring(0, targetName.Length - subLength);
+                    if (!models.Contains(fileNameWithoutCulture))
                     {
-                        result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                        models.Add(modelName);
+                        result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, cultureExp));
+                        models.Add(fileNameWithoutCulture);
                     }
                 }
 
                 // try find directory named with the same language
                 // en/**.ext
-                relatedParent = $"{parentPath}/{culture}"; //Path.Combine(parentPath, culture)
+                relativeParent = $"{directory}/{culture}"; //Path.Combine(parentPath, culture)
                 IFileInfo dir = contents.FirstOrDefault(x => x.IsDirectory && x.Name.Equals(culture));
                 if (dir != null)
                 {
-                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relatedParent);
-                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(extension));
+                    IDirectoryContents directoryContents = provider.GetDirectoryContents(relativeParent);
+                    files = directoryContents.Where(x => !x.IsDirectory && x.Name.EndsWith(endsWithFilter));
                     foreach (IFileInfo file in files)
                     {
-                        fileName = file.Name;
-                        filePath = $"{relatedParent}/{fileName}";  //Path.Combine(relatedParent, fileName)
-                        modelName = Path.GetFileNameWithoutExtension(fileName);
-                        if (!models.Contains(modelName))
+                        targetName = file.Name;
+                        filePath = $"{relativeParent}/{targetName}";  //Path.Combine(relatedParent, fileName)
+                        fileNameWithoutCulture = Path.GetFileNameWithoutExtension(targetName);
+                        if (!models.Contains(fileNameWithoutCulture))
                         {
-                            result.Add(new FileCultureInfo(filePath, fileName, modelName, extension, culture));
-                            models.Add(modelName);
+                            result.Add(new FileCultureInfo(filePath, targetName, fileNameWithoutCulture, extension, cultureExp));
+                            models.Add(fileNameWithoutCulture);
                         }
                     }
                 }
             }
             return result;
+        }
+
+        public static IList<IFileCultureInfo> FindFiles(
+            string parentPath,
+            string extension,
+            ICultureExpression requestedCulture,
+            HttpContext httpContext)
+        {
+            IHostingEnvironment env = httpContext.RequestServices.GetService<IHostingEnvironment>();
+            return FindFiles(parentPath, extension, requestedCulture, env);
         }
     }
 }
