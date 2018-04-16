@@ -89,7 +89,7 @@ namespace LocalizationCore
             IFileCultureInfo fileCultureInfo = fileCache.Get(viewFindResult.RequestedCulture, directory, viewName, "cshtml");
             if (fileCultureInfo != null)
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
+                httpContext.RequestServices.GetRequiredService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
                 string relativePath = fileCultureInfo.RelativePath.Substring(0, fileCultureInfo.RelativePath.Length - 7); // 7 == ".cshtml".Length
                 relativePath = relativePath.Substring(directory.Length + 1);
                 viewResult.ViewName = relativePath;
@@ -97,7 +97,7 @@ namespace LocalizationCore
             }
             else
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, null, cultureContext.UrlCultureSpecifier);
+                httpContext.RequestServices.GetRequiredService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(viewFindResult.RequestedCulture, null, cultureContext.UrlCultureSpecifier);
                 return base.FindView(actionContext, viewResult);
             }
         }
@@ -154,7 +154,7 @@ namespace LocalizationCore
         public override ViewResult View(string viewName, object model)
         {
             ViewData.Model = model;
-            ICultureContext cultureContext = HttpContext.RequestServices.GetService<ICultureContext>();
+            ICultureContext cultureContext = HttpContext.RequestServices.GetRequiredService<ICultureContext>();
             return new CultureMatchingViewResult(cultureContext.CurrentCulture)
             {
                 ViewData = ViewData,

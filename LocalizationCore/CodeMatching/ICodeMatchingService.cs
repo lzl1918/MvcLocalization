@@ -65,24 +65,24 @@ namespace LocalizationCore.CodeMatching
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
-            ICultureContext cultureContext = services.GetService<ICultureContext>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
+            ICultureContext cultureContext = services.GetRequiredService<ICultureContext>();
             service.Match(cultureContext.CurrentCulture, cultureOption.DefaultCulture, codedItem);
         }
         public static void Match<T>(this ICodeMatchingService service, IEnumerable<T> codedItems) where T : ICodedItem
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
-            ICultureContext cultureContext = services.GetService<ICultureContext>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
+            ICultureContext cultureContext = services.GetRequiredService<ICultureContext>();
             service.Match(cultureContext.CurrentCulture, cultureOption.DefaultCulture, codedItems);
         }
         public static string Match(this ICodeMatchingService service, string code, string defaultName)
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
-            ICultureContext cultureContext = services.GetService<ICultureContext>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
+            ICultureContext cultureContext = services.GetRequiredService<ICultureContext>();
             return service.Match(cultureContext.CurrentCulture, cultureOption.DefaultCulture, code, defaultName);
         }
 
@@ -90,21 +90,21 @@ namespace LocalizationCore.CodeMatching
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
             service.Match(requestedCulture, cultureOption.DefaultCulture, codedItem);
         }
         public static void Match<T>(this ICodeMatchingService service, ICultureExpression requestedCulture, IEnumerable<T> codedItems) where T : ICodedItem
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
             service.Match(requestedCulture, cultureOption.DefaultCulture, codedItems);
         }
         public static string Match(this ICodeMatchingService service, ICultureExpression requestedCulture, string code, string defaultName)
         {
             HttpContext httpContext = service.HttpContext;
             IServiceProvider services = httpContext.RequestServices;
-            ICultureOption cultureOption = services.GetService<ICultureOption>();
+            ICultureOption cultureOption = services.GetRequiredService<ICultureOption>();
             return service.Match(requestedCulture, cultureOption.DefaultCulture, code, defaultName);
         }
     }

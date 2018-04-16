@@ -38,10 +38,10 @@ namespace LocalizationCore
             services.AddScoped<ILocalizedViewRenderContextAccessor, LocalizedViewRenderContextAccessor>();
             services.AddScoped<ILocalizedViewRenderContext>(service =>
             {
-                ILocalizedViewRenderContextAccessor accessor = service.GetService<ILocalizedViewRenderContextAccessor>();
+                ILocalizedViewRenderContextAccessor accessor = service.GetRequiredService<ILocalizedViewRenderContextAccessor>();
                 if (accessor.Context == null)
                 {
-                    ICultureContext cultureContext = service.GetService<ICultureContext>();
+                    ICultureContext cultureContext = service.GetRequiredService<ICultureContext>();
                     accessor.Context = new LocalizedViewRenderContext(cultureContext.CurrentCulture, cultureContext.CurrentCulture, cultureContext.UrlCultureSpecifier);
                 }
                 return accessor.Context;

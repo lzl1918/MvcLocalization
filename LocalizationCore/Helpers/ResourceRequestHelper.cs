@@ -189,8 +189,8 @@ namespace LocalizationCore.Helpers
             HttpContext httpContext,
             out IFileCultureInfo result)
         {
-            IHostingEnvironment env = httpContext.RequestServices.GetService<IHostingEnvironment>();
-            ICultureOption option = httpContext.RequestServices.GetService<ICultureOption>();
+            IHostingEnvironment env = httpContext.RequestServices.GetRequiredService<IHostingEnvironment>();
+            ICultureOption option = httpContext.RequestServices.GetRequiredService<ICultureOption>();
 
             return TryFindFile(directory, fileName, extension, requestedCulture, env, option, out result);
         }
@@ -390,7 +390,7 @@ namespace LocalizationCore.Helpers
             ICultureExpression requestedCulture,
             HttpContext httpContext)
         {
-            IHostingEnvironment env = httpContext.RequestServices.GetService<IHostingEnvironment>();
+            IHostingEnvironment env = httpContext.RequestServices.GetRequiredService<IHostingEnvironment>();
             return FindFiles(parentPath, extension, requestedCulture, env);
         }
     }

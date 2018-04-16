@@ -41,11 +41,11 @@ namespace LocalizationCore
 
             HttpContext httpContext = pageContext.HttpContext;
             IRazorViewEngine engine = httpContext.RequestServices.GetRequiredService<IRazorViewEngine>();
-            ICultureContext cultureContext = httpContext.RequestServices.GetService<ICultureContext>();
+            ICultureContext cultureContext = httpContext.RequestServices.GetRequiredService<ICultureContext>();
             IFileCultureInfo fileCultureInfo = httpContext.RequestServices.GetRequiredService<ICultureFileCache>().Get(_requestedCulture, directory, pageName, "cshtml");
             if (fileCultureInfo != null)
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
+                httpContext.RequestServices.GetRequiredService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, fileCultureInfo.Culture, cultureContext.UrlCultureSpecifier);
                 string relativePath = fileCultureInfo.RelativePath; // 7 == ".cshtml".Length
                 if (!relativePath.Equals(this.Page.Path))
                 {
@@ -66,7 +66,7 @@ namespace LocalizationCore
             }
             else
             {
-                httpContext.RequestServices.GetService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, null, cultureContext.UrlCultureSpecifier);
+                httpContext.RequestServices.GetRequiredService<ILocalizedViewRenderContextAccessor>().Context = new LocalizedViewRenderContext(_requestedCulture, null, cultureContext.UrlCultureSpecifier);
             }
 
             var executor = context.HttpContext.RequestServices.GetRequiredService<PageResultExecutor>();
@@ -78,7 +78,7 @@ namespace LocalizationCore
 
         public override PageResult Page()
         {
-            var cultureContext = HttpContext.RequestServices.GetService<ICultureContext>();
+            var cultureContext = HttpContext.RequestServices.GetRequiredService<ICultureContext>();
             return new CultureMatchingPageResult(cultureContext.CurrentCulture);
         }
     }
